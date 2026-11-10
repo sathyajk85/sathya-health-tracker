@@ -160,7 +160,7 @@
     </div>
   </nav>
 
-  <!-- MODAL: ADD MEAL WITH GEMINI VISION -->
+  <!-- MODAL: ADD MEAL WITH GEMINI PHOTO & FREE-TEXT SCAN -->
   <div id="mealModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center">
@@ -168,18 +168,27 @@
         <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
       </div>
 
-      <!-- GEMINI AI PHOTO SCANNER -->
-      <div class="p-3 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-xl space-y-2">
+      <!-- GEMINI AI ASSISTANT SECTION (PHOTO + FREE TEXT) -->
+      <div class="p-3 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-xl space-y-2.5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-            <span>✨</span> Gemini AI Nutrition Scan
+            <span>✨</span> Gemini AI Nutrition Assistant
           </span>
-          <label class="cursor-pointer text-xs font-semibold px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white active:scale-95 transition">
-            📷 Take / Upload Photo
+          <label class="cursor-pointer text-xs font-semibold px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white active:scale-95 transition">
+            📷 Photo
             <input type="file" id="mealPhotoInput" accept="image/*" capture="environment" class="hidden" />
           </label>
         </div>
-        <p id="geminiScanStatus" class="text-[11px] text-slate-400 hidden">Analyzing meal with Gemini...</p>
+
+        <!-- FREE TEXT QUERY INPUT -->
+        <div class="flex gap-1.5">
+          <input type="text" id="aiTextQueryInput" placeholder="e.g. McDonald's Spicy Chicken McDeluxe" class="flex-1 bg-slate-950/80 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
+          <button type="button" id="aiTextQueryBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold active:scale-95 transition shadow">
+            Ask AI
+          </button>
+        </div>
+
+        <p id="geminiScanStatus" class="text-[11px] text-slate-400 hidden">Analyzing with Gemini...</p>
       </div>
 
       <form id="mealForm" class="space-y-3">
@@ -210,16 +219,16 @@
         </div>
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1">Food Description</label>
-          <input type="text" id="mealFood" placeholder="e.g. Chicken breast with white rice" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          <input type="text" id="mealFood" placeholder="e.g. Spicy chicken mcdeluxe" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="text-[11px] font-semibold text-slate-400 block mb-1">Brand (Optional)</label>
-            <input type="text" id="mealBrand" placeholder="e.g. Subway" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+            <input type="text" id="mealBrand" placeholder="e.g. McDonald's" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-slate-400 block mb-1">Restaurant (Optional)</label>
-            <input type="text" id="mealRestaurant" placeholder="e.g. Go Tarbush" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+            <input type="text" id="mealRestaurant" placeholder="e.g. McDonald's" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
           </div>
         </div>
         <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
@@ -309,9 +318,9 @@
       <form id="settingsForm" class="space-y-3">
         <!-- GEMINI API KEY FIELD -->
         <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-700">
-          <label class="text-xs font-bold text-emerald-400 block mb-1">Gemini API Key (For Meal Photo Scanner)</label>
-          <input type="password" id="settingGeminiKey" placeholder="Paste your API key here" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono" />
-          <span class="text-[10px] text-slate-400 block mt-1">Stored securely in your private browser & Firestore document.</span>
+          <label class="text-xs font-bold text-emerald-400 block mb-1">Gemini API Key (For AI Food Scanner & Prompting)</label>
+          <input type="password" id="settingGeminiKey" placeholder="Paste your Gemini API key here" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono" />
+          <span class="text-[10px] text-slate-400 block mt-1">Keeps your key private and synced across devices via Firestore.</span>
         </div>
 
         <div>
@@ -368,7 +377,7 @@
     const db = getFirestore(app);
     const DATA_DOC_REF = doc(db, "userData", "sathya_main_record");
 
-    // Default Settings (Clean with 1612 BMR; API key entered via Settings UI)
+    // Default Settings (1612 BMR; API key kept in settings UI/Firestore)
     const DEFAULT_SETTINGS = {
       mode: 'dynamic',
       bmr: 1612,
@@ -407,7 +416,7 @@
       }
     }
 
-    // Real-Time Cloud Listener: Updates automatically across devices
+    // Real-Time Cloud Listener
     onSnapshot(DATA_DOC_REF, (docSnap) => {
       if (docSnap.exists()) {
         const cloudPayload = docSnap.data();
@@ -496,12 +505,23 @@
     document.getElementById('openMealModalBtn').addEventListener('click', () => {
       document.getElementById('mealTime').value = new Date().toTimeString().slice(0,5);
       document.getElementById('geminiScanStatus').classList.add('hidden');
+      document.getElementById('aiTextQueryInput').value = '';
     });
     document.getElementById('openWorkoutModalBtn').addEventListener('click', () => {
       document.getElementById('workoutTime').value = new Date().toTimeString().slice(0,5);
     });
 
-    // GEMINI PHOTO SCANNER LOGIC
+    // HELPER: POPULATE MEAL FORM FROM GEMINI JSON
+    function applyParsedMealData(parsed) {
+      if (parsed.food) document.getElementById('mealFood').value = parsed.food;
+      if (parsed.calories !== undefined) document.getElementById('mealCalories').value = parsed.calories;
+      if (parsed.protein !== undefined) document.getElementById('mealProtein').value = parsed.protein;
+      if (parsed.mealType) document.getElementById('mealType').value = parsed.mealType;
+      if (parsed.restaurant) document.getElementById('mealRestaurant').value = parsed.restaurant;
+      if (parsed.brand) document.getElementById('mealBrand').value = parsed.brand;
+    }
+
+    // 1. GEMINI PHOTO SCANNER LOGIC
     const mealPhotoInput = document.getElementById('mealPhotoInput');
     const scanStatus = document.getElementById('geminiScanStatus');
 
@@ -511,13 +531,13 @@
 
       const apiKey = settings.geminiApiKey;
       if (!apiKey) {
-        alert("Please tap the ⚙️ Settings icon and paste your Gemini API Key first!");
+        alert("Please tap the ⚙️ Settings icon and enter your Gemini API Key first!");
         return;
       }
 
       scanStatus.classList.remove('hidden', 'text-rose-400', 'text-emerald-400');
       scanStatus.classList.add('text-slate-400');
-      scanStatus.textContent = "Analyzing meal with Gemini...";
+      scanStatus.textContent = "Analyzing meal photo with Gemini...";
 
       try {
         const reader = new FileReader();
@@ -533,7 +553,7 @@
               contents: [{
                 parts: [
                   {
-                    text: "You are a clinical sports dietitian. Analyze the food in this image. Estimate the realistic total calories (kcal) and total protein (grams) for the depicted portion. Return ONLY valid, raw JSON (no markdown fences, no extra text) with this exact structure: {\"food\": \"concise description of food items\", \"calories\": 450, \"protein\": 30, \"mealType\": \"Breakfast\" or \"Lunch\" or \"Dinner\" or \"Snack\"}"
+                    text: "You are an expert clinical sports dietitian. Analyze the food in this image. Estimate realistic total calories (kcal) and protein (grams) for the depicted portion. Return ONLY valid, raw JSON (no markdown fences, no extra text) with this exact structure: {\"food\": \"concise description of food items\", \"calories\": 450, \"protein\": 30, \"mealType\": \"Breakfast\" or \"Lunch\" or \"Dinner\" or \"Snack\", \"brand\": \"brand name or empty string\", \"restaurant\": \"restaurant name or empty string\"}"
                   },
                   {
                     inlineData: {
@@ -546,19 +566,14 @@
             })
           });
 
-          if (!response.ok) {
-            throw new Error(`API error: ${response.statusText}`);
-          }
+          if (!response.ok) throw new Error(`API error: ${response.statusText}`);
 
           const resData = await response.json();
           let textResult = resData.candidates[0].content.parts[0].text.trim();
           textResult = textResult.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
           const parsed = JSON.parse(textResult);
 
-          if (parsed.food) document.getElementById('mealFood').value = parsed.food;
-          if (parsed.calories) document.getElementById('mealCalories').value = parsed.calories;
-          if (parsed.protein) document.getElementById('mealProtein').value = parsed.protein;
-          if (parsed.mealType) document.getElementById('mealType').value = parsed.mealType;
+          applyParsedMealData(parsed);
 
           scanStatus.classList.remove('text-slate-400');
           scanStatus.classList.add('text-emerald-400');
@@ -568,7 +583,71 @@
         console.error(err);
         scanStatus.classList.remove('text-slate-400');
         scanStatus.classList.add('text-rose-400');
-        scanStatus.textContent = "Analysis failed. Please check your Gemini API key in settings.";
+        scanStatus.textContent = "Photo analysis failed. Check your Gemini API key in settings.";
+      }
+    });
+
+    // 2. GEMINI FREE TEXT ENQUIRY LOGIC
+    const aiTextQueryBtn = document.getElementById('aiTextQueryBtn');
+    const aiTextQueryInput = document.getElementById('aiTextQueryInput');
+
+    async function handleAITextQuery() {
+      const userText = aiTextQueryInput.value.trim();
+      if (!userText) return;
+
+      const apiKey = settings.geminiApiKey;
+      if (!apiKey) {
+        alert("Please tap the ⚙️ Settings icon and enter your Gemini API Key first!");
+        return;
+      }
+
+      scanStatus.classList.remove('hidden', 'text-rose-400', 'text-emerald-400');
+      scanStatus.classList.add('text-slate-400');
+      scanStatus.textContent = "Calculating nutrition with Gemini...";
+
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                {
+                  text: `You are an expert clinical sports dietitian. Analyze the following user meal statement: "${userText}". 
+Estimate realistic total calories (kcal) and protein (grams). Identify brand/restaurant if mentioned (e.g., McDonald's, KFC, Subway, Starbucks).
+Return ONLY valid, raw JSON (no markdown fences, no explanatory text) with this exact structure:
+{"food": "clean item description", "calories": 480, "protein": 23, "mealType": "Breakfast" or "Lunch" or "Dinner" or "Snack", "brand": "Brand or empty", "restaurant": "Restaurant or empty"}`
+                }
+              ]
+            }]
+          })
+        });
+
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+
+        const resData = await response.json();
+        let textResult = resData.candidates[0].content.parts[0].text.trim();
+        textResult = textResult.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+        const parsed = JSON.parse(textResult);
+
+        applyParsedMealData(parsed);
+
+        scanStatus.classList.remove('text-slate-400');
+        scanStatus.classList.add('text-emerald-400');
+        scanStatus.textContent = "✓ Auto-filled! Review and adjust values below if needed.";
+      } catch (err) {
+        console.error(err);
+        scanStatus.classList.remove('text-slate-400');
+        scanStatus.classList.add('text-rose-400');
+        scanStatus.textContent = "Calculation failed. Check your Gemini API key in settings.";
+      }
+    }
+
+    aiTextQueryBtn.addEventListener('click', handleAITextQuery);
+    aiTextQueryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAITextQuery();
       }
     });
 
@@ -706,7 +785,7 @@
         const totalBurn = settings.bmr + stepBurn + totalWorkoutBurn;
         totalBurnLabel.textContent = `${totalBurn.toLocaleString()} kcal`;
 
-        // Net Balance: Intake minus Burned (Negative = Deficit, Positive = Surplus)
+        // Net Balance: Intake minus Burned
         const net = totalCalories - totalBurn;
         if (net <= 0) {
           balanceCard.className = "rounded-2xl p-5 border bg-emerald-950/40 border-emerald-500/40 text-emerald-100";
