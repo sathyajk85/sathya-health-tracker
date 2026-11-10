@@ -326,9 +326,27 @@
     </div>
   </div>
 
-  <!-- APPLICATION LOGIC SCRIPT -->
-  <script>
-    // Default Settings & Configuration
+  <!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // Your Exact Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJx6QJJsLVVX0Q4tvEhxQioYFfX-yT49A",
+      authDomain: "sathya-health-tracker.firebaseapp.com",
+      projectId: "sathya-health-tracker",
+      storageBucket: "sathya-health-tracker.firebasestorage.app",
+      messagingSenderId: "490303020596",
+      appId: "1:490303020596:web:d4ee3193a5c296b1e33461"
+    };
+
+    // Initialize Firebase & Cloud Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const DATA_DOC_REF = doc(db, "userData", "sathya_main_record");
+
+    // Default Settings
     const DEFAULT_SETTINGS = {
       mode: 'dynamic',
       bmr: 1650,
@@ -344,11 +362,6 @@
     let appData = JSON.parse(localStorage.getItem('health_app_data')) || {};
     let selectedDate = new Date().toISOString().split('T')[0];
 
-    // Helper: format YYYY-MM-DD
-    function getTodayString() {
-      return new Date().toISOString().split('T')[0];
-    }
-
     function ensureDateRecord(dateStr) {
       if (!appData[dateStr]) {
         appData[dateStr] = {
@@ -360,10 +373,32 @@
       return appData[dateStr];
     }
 
-    function saveAppData() {
+    // Save locally AND sync automatically to Cloud Firestore
+    async function saveAppData() {
       localStorage.setItem('health_app_data', JSON.stringify(appData));
       renderCurrentDateView();
+      try {
+        await setDoc(DATA_DOC_REF, { data: appData, settings: settings }, { merge: true });
+      } catch (err) {
+        console.error("Cloud sync error:", err);
+      }
     }
+
+    // Real-Time Cloud Listener: Automatically updates the UI when changed on another device
+    onSnapshot(DATA_DOC_REF, (docSnap) => {
+      if (docSnap.exists()) {
+        const cloudPayload = docSnap.data();
+        if (cloudPayload.data) {
+          appData = cloudPayload.data;
+          localStorage.setItem('health_app_data', JSON.stringify(appData));
+        }
+        if (cloudPayload.settings) {
+          settings = cloudPayload.settings;
+          localStorage.setItem('app_settings', JSON.stringify(settings));
+        }
+        renderCurrentDateView();
+      }
+    });
 
     // UI Tab Navigation
     const tabs = document.querySelectorAll('.nav-tab');
@@ -411,7 +446,7 @@
     });
 
     document.getElementById('todayBtn').addEventListener('click', () => {
-      selectedDate = getTodayString();
+      selectedDate = new Date().toISOString().split('T')[0];
       datePicker.value = selectedDate;
       renderCurrentDateView();
     });
@@ -435,14 +470,12 @@
     setupModal('editStepsBtn', 'metricsModal');
     setupModal('settingsBtn', 'settingsModal');
 
-    // Populate Current Time on Open Meal/Workout
+    // Default time when opening modals
     document.getElementById('openMealModalBtn').addEventListener('click', () => {
-      const now = new Date();
-      document.getElementById('mealTime').value = now.toTimeString().slice(0,5);
+      document.getElementById('mealTime').value = new Date().toTimeString().slice(0,5);
     });
     document.getElementById('openWorkoutModalBtn').addEventListener('click', () => {
-      const now = new Date();
-      document.getElementById('workoutTime').value = now.toTimeString().slice(0,5);
+      document.getElementById('workoutTime').value = new Date().toTimeString().slice(0,5);
     });
 
     // Handle Meal Submission
@@ -514,36 +547,34 @@
       settings.stepFactor = Number(document.getElementById('settingStepFactor').value) || 0.044;
       settings.proteinGoal = Number(document.getElementById('settingProteinGoal').value) || 150;
       settings.fixedBudget = Number(document.getElementById('settingFixedBudget').value) || 1900;
-      localStorage.setItem('app_settings', JSON.stringify(settings));
+      saveAppData();
       document.getElementById('settingsModal').classList.add('hidden');
-      renderCurrentDateView();
     });
 
-    // Render Function
+    // Render View Function
     function renderCurrentDateView() {
       const rec = ensureDateRecord(selectedDate);
 
-      // Populate Metrics Inputs
+      // Inputs state
       document.getElementById('inputWeight').value = rec.metrics.weight || "";
       document.getElementById('inputFat').value = rec.metrics.fat || "";
       document.getElementById('inputMuscle').value = rec.metrics.muscle || "";
       document.getElementById('inputSteps').value = rec.metrics.steps || 0;
 
-      // Populate Settings Inputs
       document.getElementById('settingMode').value = settings.mode;
       document.getElementById('settingBMR').value = settings.bmr;
       document.getElementById('settingStepFactor').value = settings.stepFactor;
       document.getElementById('settingProteinGoal').value = settings.proteinGoal;
       document.getElementById('settingFixedBudget').value = settings.fixedBudget;
 
-      // Render Metrics Strip
+      // Metrics strip
       document.getElementById('metricWeight').textContent = rec.metrics.weight ? `${rec.metrics.weight}kg` : '--';
       document.getElementById('metricFat').textContent = rec.metrics.fat ? `${rec.metrics.fat}%` : '--';
       document.getElementById('metricMuscle').textContent = rec.metrics.muscle ? `${rec.metrics.muscle}%` : '--';
       document.getElementById('metricSteps').textContent = (rec.metrics.steps || 0).toLocaleString();
       document.getElementById('exerciseTabStepsDisplay').textContent = (rec.metrics.steps || 0).toLocaleString();
 
-      // Sum Meals
+      // Meal sums
       let totalCalories = 0;
       let totalProtein = 0;
       rec.meals.forEach(m => {
@@ -551,18 +582,18 @@
         totalProtein += m.protein || 0;
       });
 
-      // Sum Workouts Burn
+      // Workout sums
       let totalWorkoutBurn = 0;
       rec.workouts.forEach(w => {
         totalWorkoutBurn += w.burn || 0;
       });
 
-      // Render Protein Bar
+      // Protein progress bar
       document.getElementById('proteinSummaryText').textContent = `${totalProtein} / ${settings.proteinGoal}g`;
       const proteinPct = Math.min(100, Math.round((totalProtein / settings.proteinGoal) * 100));
       document.getElementById('proteinProgressBar').style.width = `${proteinPct}%`;
 
-      // Render Calorie Balance Engine
+      // Balance card calculations
       const balanceCard = document.getElementById('balanceCard');
       const balanceValue = document.getElementById('balanceValue');
       const balanceBadge = document.getElementById('balanceBadge');
@@ -578,17 +609,14 @@
         const totalBurn = settings.bmr + stepBurn + totalWorkoutBurn;
         totalBurnLabel.textContent = `${totalBurn.toLocaleString()} kcal`;
 
-        // Standard Net Balance: Intake minus Burned
+        // Net Balance: Intake minus Burned
         const net = totalCalories - totalBurn;
-
         if (net <= 0) {
-          // Deficit = Green (Negative number, e.g. -614)
           balanceCard.className = "rounded-2xl p-5 border bg-emerald-950/40 border-emerald-500/40 text-emerald-100";
           balanceBadge.className = "text-xs px-2.5 py-1 rounded-full font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
           balanceBadge.textContent = "Deficit";
           balanceValue.textContent = `${net.toLocaleString()}`;
         } else {
-          // Surplus = Red (Positive number, e.g. +350)
           balanceCard.className = "rounded-2xl p-5 border bg-rose-950/40 border-rose-500/40 text-rose-100";
           balanceBadge.className = "text-xs px-2.5 py-1 rounded-full font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/40";
           balanceBadge.textContent = "Surplus";
@@ -611,7 +639,7 @@
         }
       }
 
-      // Render Meals List (sorted chronologically by time)
+      // Render meals chronologically
       const mealsList = document.getElementById('mealsList');
       mealsList.innerHTML = '';
       document.getElementById('mealsSummarySubtext').textContent = `${totalCalories.toLocaleString()} kcal · ${totalProtein}g Protein`;
@@ -619,7 +647,6 @@
       if (rec.meals.length === 0) {
         mealsList.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No meals logged for this date.</p>`;
       } else {
-        // Sort meals by time ascending
         const sortedMeals = [...rec.meals].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         sortedMeals.forEach((m) => {
           const originalIndex = rec.meals.findIndex(item => item.id === m.id);
@@ -640,14 +667,14 @@
             <div class="text-right">
               <span class="text-sm font-black text-slate-200">${m.calories} <span class="text-[10px] font-normal text-slate-400">kcal</span></span>
               <span class="text-xs text-emerald-400 block">${m.protein}g P</span>
-              <button onclick="deleteMeal(${originalIndex})" class="text-[10px] text-slate-500 hover:text-rose-400 mt-1">Delete</button>
+              <button data-action="delete-meal" data-index="${originalIndex}" class="text-[10px] text-slate-500 hover:text-rose-400 mt-1">Delete</button>
             </div>
           `;
           mealsList.appendChild(item);
         });
       }
 
-      // Render Workouts List
+      // Render workouts
       const workoutsList = document.getElementById('workoutsList');
       workoutsList.innerHTML = '';
       document.getElementById('workoutSummarySubtext').textContent = `${rec.workouts.length} workouts · ${totalWorkoutBurn} kcal burned`;
@@ -668,7 +695,7 @@
             </div>
             <div class="text-right pl-3">
               <span class="text-sm font-black text-sky-300">${w.burn} <span class="text-[10px] font-normal text-slate-400">kcal</span></span>
-              <button onclick="deleteWorkout(${idx})" class="text-[10px] text-slate-500 hover:text-rose-400 block mt-1">Delete</button>
+              <button data-action="delete-workout" data-index="${idx}" class="text-[10px] text-slate-500 hover:text-rose-400 block mt-1">Delete</button>
             </div>
           `;
           workoutsList.appendChild(item);
@@ -676,18 +703,21 @@
       }
     }
 
-    // Global Delete Handlers
-    window.deleteMeal = function(index) {
-      appData[selectedDate].meals.splice(index, 1);
-      saveAppData();
-    };
+    // Event Delegation for Delete actions
+    document.addEventListener('click', (e) => {
+      if (e.target.dataset.action === 'delete-meal') {
+        const index = Number(e.target.dataset.index);
+        appData[selectedDate].meals.splice(index, 1);
+        saveAppData();
+      }
+      if (e.target.dataset.action === 'delete-workout') {
+        const index = Number(e.target.dataset.index);
+        appData[selectedDate].workouts.splice(index, 1);
+        saveAppData();
+      }
+    });
 
-    window.deleteWorkout = function(index) {
-      appData[selectedDate].workouts.splice(index, 1);
-      saveAppData();
-    };
-
-    // Initial Execution
+    // Initial render
     renderCurrentDateView();
   </script>
 </body>
