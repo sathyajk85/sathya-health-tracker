@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Health & Calorie Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Insights Tab -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { -webkit-tap-highlight-color: transparent; }
   </style>
@@ -115,7 +117,6 @@
 
     <!-- ================= TAB 3: EXERCISE ================= -->
     <section id="tabExercise" class="space-y-4 hidden">
-      <!-- STEPS ENTRY CARD -->
       <div class="bg-slate-800/70 rounded-2xl p-4 border border-slate-700/60 flex items-center justify-between">
         <div>
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Step Counter</h3>
@@ -126,7 +127,6 @@
         </button>
       </div>
 
-      <!-- WORKOUTS LIST -->
       <div class="flex items-center justify-between pt-2">
         <div>
           <h2 class="text-lg font-bold text-slate-100">Workouts</h2>
@@ -140,59 +140,71 @@
         <!-- Workout cards render dynamically -->
       </div>
     </section>
+
+    <!-- ================= TAB 4: INSIGHTS & CHARTS ================= -->
+    <section id="tabInsights" class="space-y-5 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100">Health Insights</h2>
+          <p class="text-xs text-slate-400">Historical trends & body composition</p>
+        </div>
+        <span class="text-xs px-2.5 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-lg">Last 14 Days</span>
+      </div>
+
+      <!-- CHART 1: CALORIE BALANCES -->
+      <div class="bg-slate-800/70 p-4 rounded-2xl border border-slate-700/60 space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Calorie Deficit & Surplus</h3>
+        <p class="text-[11px] text-slate-400">Bars: Intake vs Burned · Line: Net Deficit/Surplus</p>
+        <div class="h-56 relative w-full pt-1">
+          <canvas id="caloriesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- CHART 2: BODY COMPOSITION -->
+      <div class="bg-slate-800/70 p-4 rounded-2xl border border-slate-700/60 space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Weight & Composition</h3>
+        <p class="text-[11px] text-slate-400">Weight (kg) vs Muscle & Fat Percentages (%)</p>
+        <div class="h-56 relative w-full pt-1">
+          <canvas id="metricsChart"></canvas>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <!-- STICKY BOTTOM NAVIGATION BAR -->
+  <!-- STICKY BOTTOM NAVIGATION BAR (4 TABS) -->
   <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800">
-    <div class="max-w-md mx-auto grid grid-cols-3 text-center py-2">
+    <div class="max-w-md mx-auto grid grid-cols-4 text-center py-2">
       <button class="nav-tab active-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-emerald-400" data-target="tabDashboard">
-        <span class="text-lg">📊</span>
-        <span>Dashboard</span>
+        <span class="text-base">📊</span>
+        <span class="text-[11px]">Dashboard</span>
       </button>
       <button class="nav-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-slate-400 hover:text-slate-200" data-target="tabMeals">
-        <span class="text-lg">🍳</span>
-        <span>Meals</span>
+        <span class="text-base">🍳</span>
+        <span class="text-[11px]">Meals</span>
       </button>
       <button class="nav-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-slate-400 hover:text-slate-200" data-target="tabExercise">
-        <span class="text-lg">🏋️‍♂️</span>
-        <span>Exercise</span>
+        <span class="text-base">🏋️‍♂️</span>
+        <span class="text-[11px]">Exercise</span>
+      </button>
+      <button class="nav-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-slate-400 hover:text-slate-200" data-target="tabInsights">
+        <span class="text-base">📈</span>
+        <span class="text-[11px]">Insights</span>
       </button>
     </div>
   </nav>
 
-  <!-- MODAL: ADD MEAL WITH GEMINI PHOTO & FREE-TEXT SCAN -->
+  <!-- MODAL: ADD / EDIT MEAL -->
   <div id="mealModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-base text-slate-100">Log Meal</h3>
+        <h3 id="mealModalTitle" class="font-bold text-base text-slate-100">Log Meal</h3>
         <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
       </div>
 
-      <!-- GEMINI AI ASSISTANT SECTION -->
-      <div class="p-3 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-xl space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-            <span>✨</span> Gemini AI Nutrition Assistant
-          </span>
-          <label class="cursor-pointer text-xs font-semibold px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white active:scale-95 transition">
-            📷 Photo
-            <input type="file" id="mealPhotoInput" accept="image/*" capture="environment" class="hidden" />
-          </label>
-        </div>
-
-        <!-- FREE TEXT QUERY INPUT -->
-        <div class="flex gap-1.5">
-          <input type="text" id="aiTextQueryInput" placeholder="e.g. McDonald's Spicy Chicken McDeluxe" class="flex-1 bg-slate-950/80 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
-          <button type="button" id="aiTextQueryBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold active:scale-95 transition shadow">
-            Ask AI
-          </button>
-        </div>
-
-        <!-- DIAGNOSTIC STATUS & DETAILED ERROR DISPLAY -->
-        <div id="geminiScanStatus" class="text-[11px] p-2 rounded-lg bg-slate-950/70 border border-slate-800 hidden break-words font-mono whitespace-pre-wrap"></div>
-      </div>
-
       <form id="mealForm" class="space-y-3">
+        <!-- Hidden input to track editing ID -->
+        <input type="hidden" id="editMealId" value="" />
+
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="text-[11px] font-semibold text-slate-400 block mb-1">Meal Type</label>
@@ -220,7 +232,7 @@
         </div>
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1">Food Description</label>
-          <input type="text" id="mealFood" placeholder="e.g. Spicy chicken mcdeluxe" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          <input type="text" id="mealFood" placeholder="e.g. McDeluxe, sweetcorn, cake" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
@@ -232,7 +244,7 @@
             <input type="text" id="mealRestaurant" placeholder="e.g. McDonald's" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
           </div>
         </div>
-        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
+        <button type="submit" id="mealSubmitBtn" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
           Save Meal
         </button>
       </form>
@@ -267,7 +279,7 @@
         </div>
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1">Workout Notes & Exercises</label>
-          <textarea id="workoutNotes" rows="3" placeholder="e.g. Dumbbell bench press 3 sets, Lateral raises 3 sets" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"></textarea>
+          <textarea id="workoutNotes" rows="3" placeholder="e.g. Chest press machine to failure, lateral raises" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"></textarea>
         </div>
         <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
           Save Workout
@@ -287,7 +299,7 @@
         <div class="grid grid-cols-3 gap-2">
           <div>
             <label class="text-[11px] font-semibold text-slate-400 block mb-1">Weight (kg)</label>
-            <input type="number" step="0.05" id="inputWeight" placeholder="71.8" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+            <input type="number" step="0.05" id="inputWeight" placeholder="71.85" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-slate-400 block mb-1">Fat %</label>
@@ -317,13 +329,6 @@
         <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
       </div>
       <form id="settingsForm" class="space-y-3">
-        <!-- GEMINI API KEY FIELD -->
-        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-700">
-          <label class="text-xs font-bold text-emerald-400 block mb-1">Gemini API Key (For AI Food Scanner & Prompting)</label>
-          <input type="password" id="settingGeminiKey" placeholder="Paste your Gemini API key here" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono" />
-          <span class="text-[10px] text-slate-400 block mt-1">Keeps your key private and synced across devices via Firestore.</span>
-        </div>
-
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1">Engine Mode</label>
           <select id="settingMode" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 font-semibold">
@@ -358,11 +363,12 @@
     </div>
   </div>
 
- <!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
+  <!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+    // Your Exact Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyCJx6QJJsLVVX0Q4tvEhxQioYFfX-yT49A",
       authDomain: "sathya-health-tracker.firebaseapp.com",
@@ -382,7 +388,6 @@
       stepFactor: 0.044,
       proteinGoal: 150,
       fixedBudget: 1900,
-      geminiApiKey: '',
       strengthKcalPerMin: 6.5,
       swimKcalPerMin: 8.5,
       otherKcalPerMin: 5.0
@@ -391,6 +396,10 @@
     let settings = JSON.parse(localStorage.getItem('app_settings')) || DEFAULT_SETTINGS;
     let appData = JSON.parse(localStorage.getItem('health_app_data')) || {};
     let selectedDate = new Date().toISOString().split('T')[0];
+
+    // Chart instances
+    let caloriesChartInstance = null;
+    let metricsChartInstance = null;
 
     function ensureDateRecord(dateStr) {
       if (!appData[dateStr]) {
@@ -406,6 +415,9 @@
     async function saveAppData() {
       localStorage.setItem('health_app_data', JSON.stringify(appData));
       renderCurrentDateView();
+      if (!document.getElementById('tabInsights').classList.contains('hidden')) {
+        renderInsightsCharts();
+      }
       try {
         await setDoc(DATA_DOC_REF, { data: appData, settings: settings }, { merge: true });
       } catch (err) {
@@ -413,6 +425,7 @@
       }
     }
 
+    // Real-Time Cloud Listener
     onSnapshot(DATA_DOC_REF, (docSnap) => {
       if (docSnap.exists()) {
         const cloudPayload = docSnap.data();
@@ -425,9 +438,13 @@
           localStorage.setItem('app_settings', JSON.stringify(settings));
         }
         renderCurrentDateView();
+        if (!document.getElementById('tabInsights').classList.contains('hidden')) {
+          renderInsightsCharts();
+        }
       }
     });
 
+    // Navigation Tabs Logic
     const tabs = document.querySelectorAll('.nav-tab');
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -441,12 +458,18 @@
         document.getElementById('tabDashboard').classList.add('hidden');
         document.getElementById('tabMeals').classList.add('hidden');
         document.getElementById('tabExercise').classList.add('hidden');
+        document.getElementById('tabInsights').classList.add('hidden');
 
         const target = btn.getAttribute('data-target');
         document.getElementById(target).classList.remove('hidden');
+
+        if (target === 'tabInsights') {
+          renderInsightsCharts();
+        }
       });
     });
 
+    // Date Picker Controls
     const datePicker = document.getElementById('datePicker');
     datePicker.value = selectedDate;
 
@@ -477,6 +500,7 @@
       renderCurrentDateView();
     });
 
+    // Modals Setup
     function setupModal(triggerBtnId, modalId) {
       const modal = document.getElementById(modalId);
       const btn = document.getElementById(triggerBtnId);
@@ -495,169 +519,26 @@
     setupModal('editStepsBtn', 'metricsModal');
     setupModal('settingsBtn', 'settingsModal');
 
+    // Reset meal modal for fresh "Add Meal" action
     document.getElementById('openMealModalBtn').addEventListener('click', () => {
+      document.getElementById('mealForm').reset();
+      document.getElementById('editMealId').value = '';
+      document.getElementById('mealModalTitle').textContent = 'Log Meal';
+      document.getElementById('mealSubmitBtn').textContent = 'Save Meal';
       document.getElementById('mealTime').value = new Date().toTimeString().slice(0,5);
-      const statusBox = document.getElementById('geminiScanStatus');
-      statusBox.classList.add('hidden');
-      statusBox.textContent = '';
-      document.getElementById('aiTextQueryInput').value = '';
     });
+
     document.getElementById('openWorkoutModalBtn').addEventListener('click', () => {
       document.getElementById('workoutTime').value = new Date().toTimeString().slice(0,5);
     });
 
-    function applyParsedMealData(parsed) {
-      if (parsed.food) document.getElementById('mealFood').value = parsed.food;
-      if (parsed.calories !== undefined) document.getElementById('mealCalories').value = parsed.calories;
-      if (parsed.protein !== undefined) document.getElementById('mealProtein').value = parsed.protein;
-      if (parsed.mealType) document.getElementById('mealType').value = parsed.mealType;
-      if (parsed.restaurant) document.getElementById('mealRestaurant').value = parsed.restaurant;
-      if (parsed.brand) document.getElementById('mealBrand').value = parsed.brand;
-    }
-
-    // 1. GEMINI PHOTO SCANNER (UPDATED TO GEMINI-3.8-FLASH)
-    const mealPhotoInput = document.getElementById('mealPhotoInput');
-    const scanStatus = document.getElementById('geminiScanStatus');
-
-    mealPhotoInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const apiKey = (settings.geminiApiKey || '').trim();
-      if (!apiKey) {
-        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 block font-mono";
-        scanStatus.textContent = "Error: Gemini API Key missing in Settings.";
-        return;
-      }
-
-      scanStatus.className = "text-[11px] p-2 rounded-lg bg-slate-950/80 border border-slate-700 text-slate-300 block font-mono";
-      scanStatus.textContent = "Analyzing photo with Gemini 3.8 Flash...";
-
-      try {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-          const base64Data = reader.result.split(',')[1];
-          const mimeType = file.type || 'image/jpeg';
-
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  {
-                    text: "You are an expert clinical sports dietitian. Analyze the food in this image. Estimate realistic total calories (kcal) and protein (grams) for the depicted portion. Return ONLY valid, raw JSON with this exact structure: {\"food\": \"concise description of food items\", \"calories\": 450, \"protein\": 30, \"mealType\": \"Breakfast\" or \"Lunch\" or \"Dinner\" or \"Snack\", \"brand\": \"brand name or empty string\", \"restaurant\": \"restaurant name or empty string\"}"
-                  },
-                  {
-                    inlineData: {
-                      mimeType: mimeType,
-                      data: base64Data
-                    }
-                  }
-                ]
-              }]
-            })
-          });
-
-          if (!response.ok) {
-            const errBody = await response.text();
-            console.error("Gemini Photo API Error:", response.status, errBody);
-            scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
-            scanStatus.textContent = `Google API Error (${response.status}):\n${errBody}`;
-            return;
-          }
-
-          const resData = await response.json();
-          let textResult = resData.candidates[0].content.parts[0].text.trim();
-          textResult = textResult.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-          const parsed = JSON.parse(textResult);
-
-          applyParsedMealData(parsed);
-
-          scanStatus.className = "text-[11px] p-2 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 block font-mono";
-          scanStatus.textContent = "✓ Photo analyzed successfully! Verify values below.";
-        };
-      } catch (err) {
-        console.error(err);
-        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
-        scanStatus.textContent = `Client Exception:\n${err.message || err}`;
-      }
-    });
-
-    // 2. GEMINI FREE TEXT QUERY (UPDATED TO GEMINI-3.8-FLASH)
-    const aiTextQueryBtn = document.getElementById('aiTextQueryBtn');
-    const aiTextQueryInput = document.getElementById('aiTextQueryInput');
-
-    async function handleAITextQuery() {
-      const userText = aiTextQueryInput.value.trim();
-      if (!userText) return;
-
-      const apiKey = (settings.geminiApiKey || '').trim();
-      if (!apiKey) {
-        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 block font-mono";
-        scanStatus.textContent = "Error: Gemini API Key missing in Settings.";
-        return;
-      }
-
-      scanStatus.className = "text-[11px] p-2 rounded-lg bg-slate-950/80 border border-slate-700 text-slate-300 block font-mono";
-      scanStatus.textContent = "Estimating nutrition with Gemini 3.8 Flash...";
-
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `You are an expert clinical sports dietitian. Analyze the following meal statement: "${userText}". 
-Estimate realistic total calories (kcal) and protein (grams). Identify brand/restaurant if mentioned (e.g., McDonald's, Subway, KFC, Starbucks).
-Return ONLY valid, raw JSON with this exact structure:
-{"food": "clean item description", "calories": 480, "protein": 23, "mealType": "Breakfast" or "Lunch" or "Dinner" or "Snack", "brand": "Brand or empty string", "restaurant": "Restaurant or empty string"}`
-              }]
-            }]
-          })
-        });
-
-        if (!response.ok) {
-          const errBody = await response.text();
-          console.error("Gemini Text API Error:", response.status, errBody);
-          scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
-          scanStatus.textContent = `Google API Error (${response.status}):\n${errBody}`;
-          return;
-        }
-
-        const resData = await response.json();
-        let textResult = resData.candidates[0].content.parts[0].text.trim();
-        textResult = textResult.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-        const parsed = JSON.parse(textResult);
-
-        applyParsedMealData(parsed);
-
-        scanStatus.className = "text-[11px] p-2 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 block font-mono";
-        scanStatus.textContent = "✓ Meal parsed successfully! Review values below.";
-      } catch (err) {
-        console.error(err);
-        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
-        scanStatus.textContent = `Client Exception:\n${err.message || err}`;
-      }
-    }
-
-    aiTextQueryBtn.addEventListener('click', handleAITextQuery);
-    aiTextQueryInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAITextQuery();
-      }
-    });
-
+    // Handle Meal Submission (Supports both Add and Edit)
     document.getElementById('mealForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rec = ensureDateRecord(selectedDate);
-      rec.meals.push({
-        id: Date.now().toString(),
+      const editingId = document.getElementById('editMealId').value;
+
+      const mealPayload = {
         type: document.getElementById('mealType').value,
         time: document.getElementById('mealTime').value,
         calories: Number(document.getElementById('mealCalories').value) || 0,
@@ -665,13 +546,27 @@ Return ONLY valid, raw JSON with this exact structure:
         food: document.getElementById('mealFood').value.trim(),
         brand: document.getElementById('mealBrand').value.trim(),
         restaurant: document.getElementById('mealRestaurant').value.trim()
-      });
+      };
+
+      if (editingId) {
+        // Edit existing meal
+        const idx = rec.meals.findIndex(m => m.id === editingId);
+        if (idx !== -1) {
+          rec.meals[idx] = Object.assign({ id: editingId }, mealPayload);
+        }
+      } else {
+        // Add new meal
+        mealPayload.id = Date.now().toString();
+        rec.meals.push(mealPayload);
+      }
+
       saveAppData();
       document.getElementById('mealModal').classList.add('hidden');
       e.target.reset();
-      scanStatus.classList.add('hidden');
+      document.getElementById('editMealId').value = '';
     });
 
+    // Handle Workout Submission
     document.getElementById('workoutForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rec = ensureDateRecord(selectedDate);
@@ -695,6 +590,7 @@ Return ONLY valid, raw JSON with this exact structure:
       e.target.reset();
     });
 
+    // Handle Metrics Submission
     document.getElementById('metricsForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rec = ensureDateRecord(selectedDate);
@@ -712,9 +608,9 @@ Return ONLY valid, raw JSON with this exact structure:
       document.getElementById('metricsModal').classList.add('hidden');
     });
 
+    // Handle Settings Submission
     document.getElementById('settingsForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      settings.geminiApiKey = document.getElementById('settingGeminiKey').value.trim();
       settings.mode = document.getElementById('settingMode').value;
       settings.bmr = Number(document.getElementById('settingBMR').value) || 1612;
       settings.stepFactor = Number(document.getElementById('settingStepFactor').value) || 0.044;
@@ -724,10 +620,11 @@ Return ONLY valid, raw JSON with this exact structure:
       document.getElementById('settingsModal').classList.add('hidden');
     });
 
+    // Render View Function
     function renderCurrentDateView() {
       const rec = ensureDateRecord(selectedDate);
 
-      document.getElementById('settingGeminiKey').value = settings.geminiApiKey || "";
+      // Populate Settings & Metrics Inputs
       document.getElementById('inputWeight').value = rec.metrics.weight || "";
       document.getElementById('inputFat').value = rec.metrics.fat || "";
       document.getElementById('inputMuscle').value = rec.metrics.muscle || "";
@@ -739,12 +636,14 @@ Return ONLY valid, raw JSON with this exact structure:
       document.getElementById('settingProteinGoal').value = settings.proteinGoal;
       document.getElementById('settingFixedBudget').value = settings.fixedBudget;
 
+      // Metrics strip
       document.getElementById('metricWeight').textContent = rec.metrics.weight ? `${rec.metrics.weight}kg` : '--';
       document.getElementById('metricFat').textContent = rec.metrics.fat ? `${rec.metrics.fat}%` : '--';
       document.getElementById('metricMuscle').textContent = rec.metrics.muscle ? `${rec.metrics.muscle}%` : '--';
       document.getElementById('metricSteps').textContent = (rec.metrics.steps || 0).toLocaleString();
       document.getElementById('exerciseTabStepsDisplay').textContent = (rec.metrics.steps || 0).toLocaleString();
 
+      // Meal sums
       let totalCalories = 0;
       let totalProtein = 0;
       rec.meals.forEach(m => {
@@ -752,15 +651,18 @@ Return ONLY valid, raw JSON with this exact structure:
         totalProtein += m.protein || 0;
       });
 
+      // Workout sums
       let totalWorkoutBurn = 0;
       rec.workouts.forEach(w => {
         totalWorkoutBurn += w.burn || 0;
       });
 
+      // Protein progress bar
       document.getElementById('proteinSummaryText').textContent = `${totalProtein} / ${settings.proteinGoal}g`;
       const proteinPct = Math.min(100, Math.round((totalProtein / settings.proteinGoal) * 100));
       document.getElementById('proteinProgressBar').style.width = `${proteinPct}%`;
 
+      // Balance card calculations
       const balanceCard = document.getElementById('balanceCard');
       const balanceValue = document.getElementById('balanceValue');
       const balanceBadge = document.getElementById('balanceBadge');
@@ -805,6 +707,7 @@ Return ONLY valid, raw JSON with this exact structure:
         }
       }
 
+      // Render meals chronologically with EDIT & DELETE buttons
       const mealsList = document.getElementById('mealsList');
       mealsList.innerHTML = '';
       document.getElementById('mealsSummarySubtext').textContent = `${totalCalories.toLocaleString()} kcal · ${totalProtein}g Protein`;
@@ -814,11 +717,10 @@ Return ONLY valid, raw JSON with this exact structure:
       } else {
         const sortedMeals = [...rec.meals].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         sortedMeals.forEach((m) => {
-          const originalIndex = rec.meals.findIndex(item => item.id === m.id);
           const item = document.createElement('div');
           item.className = "bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60 flex items-start justify-between";
           item.innerHTML = `
-            <div>
+            <div class="pr-2">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-bold text-emerald-400 uppercase tracking-wide">${m.type}</span>
                 <span class="text-[10px] text-slate-500">${m.time}</span>
@@ -829,16 +731,21 @@ Return ONLY valid, raw JSON with this exact structure:
                 ${m.brand ? `<span class="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-slate-400">🏷️ ${m.brand}</span>` : ''}
               </div>
             </div>
-            <div class="text-right">
+            <div class="text-right shrink-0">
               <span class="text-sm font-black text-slate-200">${m.calories} <span class="text-[10px] font-normal text-slate-400">kcal</span></span>
               <span class="text-xs text-emerald-400 block">${m.protein}g P</span>
-              <button data-action="delete-meal" data-index="${originalIndex}" class="text-[10px] text-slate-500 hover:text-rose-400 mt-1">Delete</button>
+              <div class="flex items-center justify-end gap-2 mt-1.5">
+                <button data-action="edit-meal" data-id="${m.id}" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold">Edit</button>
+                <span class="text-slate-600 text-[10px]">·</span>
+                <button data-action="delete-meal" data-id="${m.id}" class="text-[11px] text-slate-500 hover:text-rose-400">Delete</button>
+              </div>
             </div>
           `;
           mealsList.appendChild(item);
         });
       }
 
+      // Render workouts
       const workoutsList = document.getElementById('workoutsList');
       workoutsList.innerHTML = '';
       document.getElementById('workoutSummarySubtext').textContent = `${rec.workouts.length} workouts · ${totalWorkoutBurn} kcal burned`;
@@ -846,7 +753,7 @@ Return ONLY valid, raw JSON with this exact structure:
       if (rec.workouts.length === 0) {
         workoutsList.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No workouts logged for this date.</p>`;
       } else {
-        rec.workouts.forEach((w, idx) => {
+        rec.workouts.forEach((w) => {
           const item = document.createElement('div');
           item.className = "bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/60 flex items-start justify-between";
           item.innerHTML = `
@@ -859,7 +766,7 @@ Return ONLY valid, raw JSON with this exact structure:
             </div>
             <div class="text-right pl-3">
               <span class="text-sm font-black text-sky-300">${w.burn} <span class="text-[10px] font-normal text-slate-400">kcal</span></span>
-              <button data-action="delete-workout" data-index="${idx}" class="text-[10px] text-slate-500 hover:text-rose-400 block mt-1">Delete</button>
+              <button data-action="delete-workout" data-id="${w.id}" class="text-[10px] text-slate-500 hover:text-rose-400 block mt-1">Delete</button>
             </div>
           `;
           workoutsList.appendChild(item);
@@ -867,18 +774,203 @@ Return ONLY valid, raw JSON with this exact structure:
       }
     }
 
+    // Event Delegation for Edit & Delete actions
     document.addEventListener('click', (e) => {
+      const mealId = e.target.dataset.id;
+      const rec = ensureDateRecord(selectedDate);
+
+      // Handle Edit Meal
+      if (e.target.dataset.action === 'edit-meal') {
+        const mealToEdit = rec.meals.find(m => m.id === mealId);
+        if (mealToEdit) {
+          document.getElementById('editMealId').value = mealToEdit.id;
+          document.getElementById('mealType').value = mealToEdit.type || 'Dinner';
+          document.getElementById('mealTime').value = mealToEdit.time || '';
+          document.getElementById('mealCalories').value = mealToEdit.calories || '';
+          document.getElementById('mealProtein').value = mealToEdit.protein || '';
+          document.getElementById('mealFood').value = mealToEdit.food || '';
+          document.getElementById('mealBrand').value = mealToEdit.brand || '';
+          document.getElementById('mealRestaurant').value = mealToEdit.restaurant || '';
+
+          document.getElementById('mealModalTitle').textContent = 'Edit Meal';
+          document.getElementById('mealSubmitBtn').textContent = 'Update Meal';
+          document.getElementById('mealModal').classList.remove('hidden');
+        }
+      }
+
+      // Handle Delete Meal
       if (e.target.dataset.action === 'delete-meal') {
-        const index = Number(e.target.dataset.index);
-        appData[selectedDate].meals.splice(index, 1);
+        rec.meals = rec.meals.filter(m => m.id !== mealId);
         saveAppData();
       }
+
+      // Handle Delete Workout
       if (e.target.dataset.action === 'delete-workout') {
-        const index = Number(e.target.dataset.index);
-        appData[selectedDate].workouts.splice(index, 1);
+        rec.workouts = rec.workouts.filter(w => w.id !== mealId);
         saveAppData();
       }
     });
 
+    // ================= INSIGHTS TAB TREND CHARTS =================
+    function renderInsightsCharts() {
+      // Gather and sort all unique dates recorded in appData
+      const dateKeys = Object.keys(appData).sort();
+      const recentDates = dateKeys.slice(-14); // show last 14 logged dates
+
+      if (recentDates.length === 0) return;
+
+      const labels = recentDates.map(d => d.slice(5)); // MM-DD
+      const intakes = [];
+      const burns = [];
+      const netBalances = [];
+      const weights = [];
+      const muscles = [];
+      const fats = [];
+
+      recentDates.forEach(d => {
+        const item = appData[d] || {};
+        const meals = item.meals || [];
+        const workouts = item.workouts || [];
+        const metrics = item.metrics || {};
+
+        let dayIntake = meals.reduce((sum, m) => sum + (Number(m.calories) || 0), 0);
+        let dayWorkoutBurn = workouts.reduce((sum, w) => sum + (Number(w.burn) || 0), 0);
+        let daySteps = Number(metrics.steps) || 0;
+        let dayBurn = settings.bmr + Math.round(daySteps * settings.stepFactor) + dayWorkoutBurn;
+
+        intakes.push(dayIntake);
+        burns.push(dayBurn);
+        netBalances.push(dayIntake - dayBurn);
+
+        weights.push(metrics.weight || null);
+        muscles.push(metrics.muscle || null);
+        fats.push(metrics.fat || null);
+      });
+
+      // 1. Calories Trends Chart
+      const ctxCal = document.getElementById('caloriesChart');
+      if (ctxCal) {
+        if (caloriesChartInstance) caloriesChartInstance.destroy();
+        caloriesChartInstance = new Chart(ctxCal, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                type: 'line',
+                label: 'Net Balance',
+                data: netBalances,
+                borderColor: '#38bdf8',
+                backgroundColor: '#38bdf8',
+                borderWidth: 2,
+                pointRadius: 3,
+                tension: 0.2,
+                yAxisID: 'y'
+              },
+              {
+                type: 'bar',
+                label: 'Burned',
+                data: burns,
+                backgroundColor: 'rgba(148, 163, 184, 0.4)',
+                borderRadius: 4,
+                yAxisID: 'y'
+              },
+              {
+                type: 'bar',
+                label: 'Intake',
+                data: intakes,
+                backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                borderRadius: 4,
+                yAxisID: 'y'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: { grid: { color: 'rgba(51, 65, 85, 0.4)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+              y: { grid: { color: 'rgba(51, 65, 85, 0.4)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+            },
+            plugins: {
+              legend: { labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 } }
+            }
+          }
+        });
+      }
+
+      // 2. Metrics Trends Chart (Weight, Fat, Muscle)
+      const ctxMet = document.getElementById('metricsChart');
+      if (ctxMet) {
+        if (metricsChartInstance) metricsChartInstance.destroy();
+        metricsChartInstance = new Chart(ctxMet, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Weight (kg)',
+                data: weights,
+                borderColor: '#10b981',
+                backgroundColor: '#10b981',
+                borderWidth: 2,
+                spanGaps: true,
+                pointRadius: 4,
+                yAxisID: 'yWeight'
+              },
+              {
+                label: 'Muscle (%)',
+                data: muscles,
+                borderColor: '#38bdf8',
+                backgroundColor: '#38bdf8',
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                spanGaps: true,
+                pointRadius: 3,
+                yAxisID: 'yPct'
+              },
+              {
+                label: 'Fat (%)',
+                data: fats,
+                borderColor: '#fb7185',
+                backgroundColor: '#fb7185',
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                spanGaps: true,
+                pointRadius: 3,
+                yAxisID: 'yPct'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: { grid: { color: 'rgba(51, 65, 85, 0.4)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+              yWeight: {
+                type: 'linear',
+                position: 'left',
+                grid: { color: 'rgba(51, 65, 85, 0.4)' },
+                ticks: { color: '#10b981', font: { size: 10 } }
+              },
+              yPct: {
+                type: 'linear',
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                ticks: { color: '#38bdf8', font: { size: 10 } }
+              }
+            },
+            plugins: {
+              legend: { labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 } }
+            }
+          }
+        });
+      }
+    }
+
     renderCurrentDateView();
   </script>
+</body>
+</html>
