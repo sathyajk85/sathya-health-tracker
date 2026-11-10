@@ -358,12 +358,11 @@
     </div>
   </div>
 
-  <!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
+ <!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // Your Exact Firebase Configuration
     const firebaseConfig = {
       apiKey: "AIzaSyCJx6QJJsLVVX0Q4tvEhxQioYFfX-yT49A",
       authDomain: "sathya-health-tracker.firebaseapp.com",
@@ -373,12 +372,10 @@
       appId: "1:490303020596:web:d4ee3193a5c296b1e33461"
     };
 
-    // Initialize Firebase & Cloud Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const DATA_DOC_REF = doc(db, "userData", "sathya_main_record");
 
-    // Default Settings
     const DEFAULT_SETTINGS = {
       mode: 'dynamic',
       bmr: 1612,
@@ -406,7 +403,6 @@
       return appData[dateStr];
     }
 
-    // Save locally AND sync automatically to Cloud Firestore
     async function saveAppData() {
       localStorage.setItem('health_app_data', JSON.stringify(appData));
       renderCurrentDateView();
@@ -417,7 +413,6 @@
       }
     }
 
-    // Real-Time Cloud Listener
     onSnapshot(DATA_DOC_REF, (docSnap) => {
       if (docSnap.exists()) {
         const cloudPayload = docSnap.data();
@@ -433,7 +428,6 @@
       }
     });
 
-    // UI Tab Navigation
     const tabs = document.querySelectorAll('.nav-tab');
     tabs.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -453,7 +447,6 @@
       });
     });
 
-    // Date Picker Controls
     const datePicker = document.getElementById('datePicker');
     datePicker.value = selectedDate;
 
@@ -484,7 +477,6 @@
       renderCurrentDateView();
     });
 
-    // Modals Handling
     function setupModal(triggerBtnId, modalId) {
       const modal = document.getElementById(modalId);
       const btn = document.getElementById(triggerBtnId);
@@ -523,7 +515,7 @@
       if (parsed.brand) document.getElementById('mealBrand').value = parsed.brand;
     }
 
-    // 1. GEMINI PHOTO SCANNER LOGIC (WITH DETAILED DIAGNOSTICS)
+    // 1. GEMINI PHOTO SCANNER (UPDATED TO GEMINI-3.8-FLASH)
     const mealPhotoInput = document.getElementById('mealPhotoInput');
     const scanStatus = document.getElementById('geminiScanStatus');
 
@@ -534,12 +526,12 @@
       const apiKey = (settings.geminiApiKey || '').trim();
       if (!apiKey) {
         scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 block font-mono";
-        scanStatus.textContent = "Error: Gemini API Key is missing. Open Settings (⚙️) and paste your key.";
+        scanStatus.textContent = "Error: Gemini API Key missing in Settings.";
         return;
       }
 
       scanStatus.className = "text-[11px] p-2 rounded-lg bg-slate-950/80 border border-slate-700 text-slate-300 block font-mono";
-      scanStatus.textContent = "Uploading image and querying Gemini...";
+      scanStatus.textContent = "Analyzing photo with Gemini 3.8 Flash...";
 
       try {
         const reader = new FileReader();
@@ -548,7 +540,7 @@
           const base64Data = reader.result.split(',')[1];
           const mimeType = file.type || 'image/jpeg';
 
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
           const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -594,7 +586,7 @@
       }
     });
 
-    // 2. GEMINI FREE TEXT QUERY LOGIC (WITH DETAILED DIAGNOSTICS)
+    // 2. GEMINI FREE TEXT QUERY (UPDATED TO GEMINI-3.8-FLASH)
     const aiTextQueryBtn = document.getElementById('aiTextQueryBtn');
     const aiTextQueryInput = document.getElementById('aiTextQueryInput');
 
@@ -605,15 +597,15 @@
       const apiKey = (settings.geminiApiKey || '').trim();
       if (!apiKey) {
         scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 block font-mono";
-        scanStatus.textContent = "Error: Gemini API Key is missing. Open Settings (⚙️) and paste your key.";
+        scanStatus.textContent = "Error: Gemini API Key missing in Settings.";
         return;
       }
 
       scanStatus.className = "text-[11px] p-2 rounded-lg bg-slate-950/80 border border-slate-700 text-slate-300 block font-mono";
-      scanStatus.textContent = "Sending request to Gemini...";
+      scanStatus.textContent = "Estimating nutrition with Gemini 3.8 Flash...";
 
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -622,7 +614,7 @@
               parts: [{
                 text: `You are an expert clinical sports dietitian. Analyze the following meal statement: "${userText}". 
 Estimate realistic total calories (kcal) and protein (grams). Identify brand/restaurant if mentioned (e.g., McDonald's, Subway, KFC, Starbucks).
-Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this exact structure:
+Return ONLY valid, raw JSON with this exact structure:
 {"food": "clean item description", "calories": 480, "protein": 23, "mealType": "Breakfast" or "Lunch" or "Dinner" or "Snack", "brand": "Brand or empty string", "restaurant": "Restaurant or empty string"}`
               }]
             }]
@@ -645,7 +637,7 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
         applyParsedMealData(parsed);
 
         scanStatus.className = "text-[11px] p-2 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 block font-mono";
-        scanStatus.textContent = "✓ Meal parsed successfully! Review and adjust values below.";
+        scanStatus.textContent = "✓ Meal parsed successfully! Review values below.";
       } catch (err) {
         console.error(err);
         scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
@@ -661,7 +653,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       }
     });
 
-    // Handle Meal Submission
     document.getElementById('mealForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rec = ensureDateRecord(selectedDate);
@@ -681,7 +672,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       scanStatus.classList.add('hidden');
     });
 
-    // Handle Workout Submission
     document.getElementById('workoutForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rec = ensureDateRecord(selectedDate);
@@ -705,7 +695,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       e.target.reset();
     });
 
-    // Handle Metrics Submission
     document.getElementById('metricsForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rec = ensureDateRecord(selectedDate);
@@ -723,7 +712,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       document.getElementById('metricsModal').classList.add('hidden');
     });
 
-    // Handle Settings Submission
     document.getElementById('settingsForm').addEventListener('submit', (e) => {
       e.preventDefault();
       settings.geminiApiKey = document.getElementById('settingGeminiKey').value.trim();
@@ -736,11 +724,9 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       document.getElementById('settingsModal').classList.add('hidden');
     });
 
-    // Render View Function
     function renderCurrentDateView() {
       const rec = ensureDateRecord(selectedDate);
 
-      // Populate Settings & Metrics Inputs
       document.getElementById('settingGeminiKey').value = settings.geminiApiKey || "";
       document.getElementById('inputWeight').value = rec.metrics.weight || "";
       document.getElementById('inputFat').value = rec.metrics.fat || "";
@@ -753,14 +739,12 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       document.getElementById('settingProteinGoal').value = settings.proteinGoal;
       document.getElementById('settingFixedBudget').value = settings.fixedBudget;
 
-      // Metrics strip
       document.getElementById('metricWeight').textContent = rec.metrics.weight ? `${rec.metrics.weight}kg` : '--';
       document.getElementById('metricFat').textContent = rec.metrics.fat ? `${rec.metrics.fat}%` : '--';
       document.getElementById('metricMuscle').textContent = rec.metrics.muscle ? `${rec.metrics.muscle}%` : '--';
       document.getElementById('metricSteps').textContent = (rec.metrics.steps || 0).toLocaleString();
       document.getElementById('exerciseTabStepsDisplay').textContent = (rec.metrics.steps || 0).toLocaleString();
 
-      // Meal sums
       let totalCalories = 0;
       let totalProtein = 0;
       rec.meals.forEach(m => {
@@ -768,18 +752,15 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
         totalProtein += m.protein || 0;
       });
 
-      // Workout sums
       let totalWorkoutBurn = 0;
       rec.workouts.forEach(w => {
         totalWorkoutBurn += w.burn || 0;
       });
 
-      // Protein progress bar
       document.getElementById('proteinSummaryText').textContent = `${totalProtein} / ${settings.proteinGoal}g`;
       const proteinPct = Math.min(100, Math.round((totalProtein / settings.proteinGoal) * 100));
       document.getElementById('proteinProgressBar').style.width = `${proteinPct}%`;
 
-      // Balance card calculations
       const balanceCard = document.getElementById('balanceCard');
       const balanceValue = document.getElementById('balanceValue');
       const balanceBadge = document.getElementById('balanceBadge');
@@ -795,7 +776,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
         const totalBurn = settings.bmr + stepBurn + totalWorkoutBurn;
         totalBurnLabel.textContent = `${totalBurn.toLocaleString()} kcal`;
 
-        // Net Balance: Intake minus Burned
         const net = totalCalories - totalBurn;
         if (net <= 0) {
           balanceCard.className = "rounded-2xl p-5 border bg-emerald-950/40 border-emerald-500/40 text-emerald-100";
@@ -825,7 +805,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
         }
       }
 
-      // Render meals chronologically
       const mealsList = document.getElementById('mealsList');
       mealsList.innerHTML = '';
       document.getElementById('mealsSummarySubtext').textContent = `${totalCalories.toLocaleString()} kcal · ${totalProtein}g Protein`;
@@ -860,7 +839,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
         });
       }
 
-      // Render workouts
       const workoutsList = document.getElementById('workoutsList');
       workoutsList.innerHTML = '';
       document.getElementById('workoutSummarySubtext').textContent = `${rec.workouts.length} workouts · ${totalWorkoutBurn} kcal burned`;
@@ -889,7 +867,6 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
       }
     }
 
-    // Event Delegation for Delete actions
     document.addEventListener('click', (e) => {
       if (e.target.dataset.action === 'delete-meal') {
         const index = Number(e.target.dataset.index);
@@ -905,5 +882,3 @@ Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this
 
     renderCurrentDateView();
   </script>
-</body>
-</html>
