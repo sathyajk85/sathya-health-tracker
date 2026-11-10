@@ -1,4 +1,354 @@
-<!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Health & Calorie Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased pb-24">
+
+  <!-- TOP HEADER & DATE NAVIGATOR -->
+  <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3">
+    <div class="max-w-md mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-1">
+        <button id="prevDateBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300">
+          ◀
+        </button>
+        <input type="date" id="datePicker" class="bg-slate-800 text-sm font-semibold rounded-lg px-2 py-1.5 border border-slate-700 text-slate-200 focus:outline-none focus:border-emerald-500" />
+        <button id="nextDateBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300">
+          ▶
+        </button>
+        <button id="todayBtn" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 active:scale-95">
+          Today
+        </button>
+      </div>
+      <button id="settingsBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-95" title="Settings">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="flex-1 max-w-md w-full mx-auto p-4 space-y-4">
+
+    <!-- ================= TAB 1: DASHBOARD ================= -->
+    <section id="tabDashboard" class="space-y-4">
+      <!-- CALORIE BALANCE CARD -->
+      <div id="balanceCard" class="rounded-2xl p-5 border transition-all duration-200">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400" id="balanceModeLabel">Dynamic Net Balance</span>
+          <span id="balanceBadge" class="text-xs px-2.5 py-1 rounded-full font-bold uppercase"></span>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <h2 id="balanceValue" class="text-3xl font-extrabold tracking-tight">--</h2>
+          <span class="text-sm font-medium text-slate-400">kcal</span>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span class="text-slate-400">Total Burned:</span>
+            <p id="totalBurnLabel" class="font-bold text-slate-200 text-sm">--</p>
+          </div>
+          <div>
+            <span class="text-slate-400">Total Consumed:</span>
+            <p id="totalIntakeLabel" class="font-bold text-slate-200 text-sm">--</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROTEIN PROGRESS CARD -->
+      <div class="bg-slate-800/70 rounded-2xl p-4 border border-slate-700/60">
+        <div class="flex justify-between items-center text-xs mb-1.5 font-medium">
+          <span class="text-slate-300">Daily Protein Intake</span>
+          <span id="proteinSummaryText" class="font-bold text-emerald-400">0 / 150g</span>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+          <div id="proteinProgressBar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- BODY METRICS STRIP -->
+      <div class="bg-slate-800/70 rounded-2xl p-4 border border-slate-700/60 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Body Composition & Steps</h3>
+          <button id="openMetricsModalBtn" class="text-xs font-semibold text-emerald-400 hover:underline">+ Log Metrics</button>
+        </div>
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Weight</span>
+            <span id="metricWeight" class="text-sm font-bold text-slate-100">--</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Body Fat</span>
+            <span id="metricFat" class="text-sm font-bold text-slate-100">--</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Muscle</span>
+            <span id="metricMuscle" class="text-sm font-bold text-slate-100">--</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] text-slate-400 block">Steps</span>
+            <span id="metricSteps" class="text-sm font-bold text-slate-100">0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: MEALS ================= -->
+    <section id="tabMeals" class="space-y-4 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100">Daily Meals</h2>
+          <p class="text-xs text-slate-400" id="mealsSummarySubtext">0 kcal · 0g Protein</p>
+        </div>
+        <button id="openMealModalBtn" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs active:scale-95 shadow">
+          + Add Meal
+        </button>
+      </div>
+      <div id="mealsList" class="space-y-2.5">
+        <!-- Meal cards render dynamically -->
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: EXERCISE ================= -->
+    <section id="tabExercise" class="space-y-4 hidden">
+      <!-- STEPS ENTRY CARD -->
+      <div class="bg-slate-800/70 rounded-2xl p-4 border border-slate-700/60 flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Step Counter</h3>
+          <p id="exerciseTabStepsDisplay" class="text-2xl font-black text-slate-100 mt-1">0</p>
+        </div>
+        <button id="editStepsBtn" class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold text-xs active:scale-95 text-slate-200">
+          Edit Steps
+        </button>
+      </div>
+
+      <!-- WORKOUTS LIST -->
+      <div class="flex items-center justify-between pt-2">
+        <div>
+          <h2 class="text-lg font-bold text-slate-100">Workouts</h2>
+          <p class="text-xs text-slate-400" id="workoutSummarySubtext">0 workouts logged</p>
+        </div>
+        <button id="openWorkoutModalBtn" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs active:scale-95 shadow">
+          + Add Workout
+        </button>
+      </div>
+      <div id="workoutsList" class="space-y-2.5">
+        <!-- Workout cards render dynamically -->
+      </div>
+    </section>
+  </main>
+
+  <!-- STICKY BOTTOM NAVIGATION BAR -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800">
+    <div class="max-w-md mx-auto grid grid-cols-3 text-center py-2">
+      <button class="nav-tab active-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-emerald-400" data-target="tabDashboard">
+        <span class="text-lg">📊</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-slate-400 hover:text-slate-200" data-target="tabMeals">
+        <span class="text-lg">🍳</span>
+        <span>Meals</span>
+      </button>
+      <button class="nav-tab flex flex-col items-center justify-center text-xs font-semibold py-1 text-slate-400 hover:text-slate-200" data-target="tabExercise">
+        <span class="text-lg">🏋️‍♂️</span>
+        <span>Exercise</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MODAL: ADD MEAL WITH GEMINI VISION -->
+  <div id="mealModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-base text-slate-100">Log Meal</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
+      </div>
+
+      <!-- GEMINI AI PHOTO SCANNER -->
+      <div class="p-3 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-xl space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+            <span>✨</span> Gemini AI Nutrition Scan
+          </span>
+          <label class="cursor-pointer text-xs font-semibold px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white active:scale-95 transition">
+            📷 Take / Upload Photo
+            <input type="file" id="mealPhotoInput" accept="image/*" capture="environment" class="hidden" />
+          </label>
+        </div>
+        <p id="geminiScanStatus" class="text-[11px] text-slate-400 hidden">Analyzing meal with Gemini...</p>
+      </div>
+
+      <form id="mealForm" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Meal Type</label>
+            <select id="mealType" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200">
+              <option value="Breakfast">Breakfast</option>
+              <option value="Lunch">Lunch</option>
+              <option value="Dinner">Dinner</option>
+              <option value="Snack">Snack</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Time</label>
+            <input type="time" id="mealTime" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" required />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Calories (kcal)</label>
+            <input type="number" id="mealCalories" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 font-bold" required />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Protein (g)</label>
+            <input type="number" id="mealProtein" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 font-bold" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Food Description</label>
+          <input type="text" id="mealFood" placeholder="e.g. Chicken breast with white rice" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Brand (Optional)</label>
+            <input type="text" id="mealBrand" placeholder="e.g. Subway" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Restaurant (Optional)</label>
+            <input type="text" id="mealRestaurant" placeholder="e.g. Go Tarbush" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
+          Save Meal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD WORKOUT -->
+  <div id="workoutModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-base text-slate-100">Log Workout</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
+      </div>
+      <form id="workoutForm" class="space-y-3">
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Category</label>
+          <select id="workoutType" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200">
+            <option value="Strength Training">Strength Training</option>
+            <option value="Swimming">Swimming</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Start Time</label>
+            <input type="time" id="workoutTime" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" required />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Duration (Mins)</label>
+            <input type="number" id="workoutDuration" placeholder="30" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" required />
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Workout Notes & Exercises</label>
+          <textarea id="workoutNotes" rows="3" placeholder="e.g. Dumbbell bench press 3 sets, Lateral raises 3 sets" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"></textarea>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
+          Save Workout
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: METRICS / STEPS -->
+  <div id="metricsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-base text-slate-100">Log Metrics for Selected Date</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
+      </div>
+      <form id="metricsForm" class="space-y-3">
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Weight (kg)</label>
+            <input type="number" step="0.05" id="inputWeight" placeholder="71.8" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Fat %</label>
+            <input type="number" step="0.1" id="inputFat" placeholder="18.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Muscle %</label>
+            <input type="number" step="0.1" id="inputMuscle" placeholder="38.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Daily Steps Count</label>
+          <input type="number" id="inputSteps" placeholder="15000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
+          Update Metrics
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS (HYBRID ENGINE + GEMINI API KEY) -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-base text-slate-100">App & Calorie Settings</h3>
+        <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
+      </div>
+      <form id="settingsForm" class="space-y-3">
+        <!-- GEMINI API KEY FIELD -->
+        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-700">
+          <label class="text-xs font-bold text-emerald-400 block mb-1">Gemini API Key (For Meal Photo Scanner)</label>
+          <input type="password" id="settingGeminiKey" placeholder="Paste your API key here" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 font-mono" />
+          <span class="text-[10px] text-slate-400 block mt-1">Stored securely in your private browser & Firestore document.</span>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Engine Mode</label>
+          <select id="settingMode" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 font-semibold">
+            <option value="dynamic">Dynamic TDEE (BMR + Steps + Workouts)</option>
+            <option value="fixed">Fixed Target Budget</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Base Burn / BMR (kcal)</label>
+            <input type="number" id="settingBMR" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Step Factor (kcal/step)</label>
+            <input type="number" step="0.001" id="settingStepFactor" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Protein Goal (g)</label>
+            <input type="number" id="settingProteinGoal" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 block mb-1">Fixed Budget (kcal)</label>
+            <input type="number" id="settingFixedBudget" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200" />
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white active:scale-95 shadow">
+          Save Settings
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- FIREBASE MODULAR SDK & APPLICATION LOGIC -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -18,7 +368,7 @@
     const db = getFirestore(app);
     const DATA_DOC_REF = doc(db, "userData", "sathya_main_record");
 
-    // Default Settings (API Key set via Settings UI)
+    // Default Settings (Clean with 1612 BMR; API key entered via Settings UI)
     const DEFAULT_SETTINGS = {
       mode: 'dynamic',
       bmr: 1612,
@@ -57,7 +407,7 @@
       }
     }
 
-    // Real-Time Cloud Listener
+    // Real-Time Cloud Listener: Updates automatically across devices
     onSnapshot(DATA_DOC_REF, (docSnap) => {
       if (docSnap.exists()) {
         const cloudPayload = docSnap.data();
@@ -124,7 +474,7 @@
       renderCurrentDateView();
     });
 
-    // Modals Setup
+    // Modals Handling
     function setupModal(triggerBtnId, modalId) {
       const modal = document.getElementById(modalId);
       const btn = document.getElementById(triggerBtnId);
@@ -161,7 +511,7 @@
 
       const apiKey = settings.geminiApiKey;
       if (!apiKey) {
-        alert("Please tap the ⚙️ Settings icon and enter your Gemini API Key first!");
+        alert("Please tap the ⚙️ Settings icon and paste your Gemini API Key first!");
         return;
       }
 
@@ -356,7 +706,7 @@
         const totalBurn = settings.bmr + stepBurn + totalWorkoutBurn;
         totalBurnLabel.textContent = `${totalBurn.toLocaleString()} kcal`;
 
-        // Net Balance: Intake minus Burned
+        // Net Balance: Intake minus Burned (Negative = Deficit, Positive = Surplus)
         const net = totalCalories - totalBurn;
         if (net <= 0) {
           balanceCard.className = "rounded-2xl p-5 border bg-emerald-950/40 border-emerald-500/40 text-emerald-100";
