@@ -168,7 +168,7 @@
         <button class="closeModalBtn text-slate-400 hover:text-slate-200 font-bold p-1">✕</button>
       </div>
 
-      <!-- GEMINI AI ASSISTANT SECTION (PHOTO + FREE TEXT) -->
+      <!-- GEMINI AI ASSISTANT SECTION -->
       <div class="p-3 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/30 rounded-xl space-y-2.5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
@@ -188,7 +188,8 @@
           </button>
         </div>
 
-        <p id="geminiScanStatus" class="text-[11px] text-slate-400 hidden">Analyzing with Gemini...</p>
+        <!-- DIAGNOSTIC STATUS & DETAILED ERROR DISPLAY -->
+        <div id="geminiScanStatus" class="text-[11px] p-2 rounded-lg bg-slate-950/70 border border-slate-800 hidden break-words font-mono whitespace-pre-wrap"></div>
       </div>
 
       <form id="mealForm" class="space-y-3">
@@ -308,7 +309,7 @@
     </div>
   </div>
 
-  <!-- MODAL: SETTINGS (HYBRID ENGINE + GEMINI API KEY) -->
+  <!-- MODAL: SETTINGS -->
   <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center">
@@ -377,7 +378,7 @@
     const db = getFirestore(app);
     const DATA_DOC_REF = doc(db, "userData", "sathya_main_record");
 
-    // Default Settings (1612 BMR; API key kept in settings UI/Firestore)
+    // Default Settings
     const DEFAULT_SETTINGS = {
       mode: 'dynamic',
       bmr: 1612,
@@ -504,14 +505,15 @@
 
     document.getElementById('openMealModalBtn').addEventListener('click', () => {
       document.getElementById('mealTime').value = new Date().toTimeString().slice(0,5);
-      document.getElementById('geminiScanStatus').classList.add('hidden');
+      const statusBox = document.getElementById('geminiScanStatus');
+      statusBox.classList.add('hidden');
+      statusBox.textContent = '';
       document.getElementById('aiTextQueryInput').value = '';
     });
     document.getElementById('openWorkoutModalBtn').addEventListener('click', () => {
       document.getElementById('workoutTime').value = new Date().toTimeString().slice(0,5);
     });
 
-    // HELPER: POPULATE MEAL FORM FROM GEMINI JSON
     function applyParsedMealData(parsed) {
       if (parsed.food) document.getElementById('mealFood').value = parsed.food;
       if (parsed.calories !== undefined) document.getElementById('mealCalories').value = parsed.calories;
@@ -521,7 +523,7 @@
       if (parsed.brand) document.getElementById('mealBrand').value = parsed.brand;
     }
 
-    // 1. GEMINI PHOTO SCANNER LOGIC
+    // 1. GEMINI PHOTO SCANNER LOGIC (WITH DETAILED DIAGNOSTICS)
     const mealPhotoInput = document.getElementById('mealPhotoInput');
     const scanStatus = document.getElementById('geminiScanStatus');
 
@@ -529,15 +531,15 @@
       const file = e.target.files[0];
       if (!file) return;
 
-      const apiKey = settings.geminiApiKey;
+      const apiKey = (settings.geminiApiKey || '').trim();
       if (!apiKey) {
-        alert("Please tap the ⚙️ Settings icon and enter your Gemini API Key first!");
+        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 block font-mono";
+        scanStatus.textContent = "Error: Gemini API Key is missing. Open Settings (⚙️) and paste your key.";
         return;
       }
 
-      scanStatus.classList.remove('hidden', 'text-rose-400', 'text-emerald-400');
-      scanStatus.classList.add('text-slate-400');
-      scanStatus.textContent = "Analyzing meal photo with Gemini...";
+      scanStatus.className = "text-[11px] p-2 rounded-lg bg-slate-950/80 border border-slate-700 text-slate-300 block font-mono";
+      scanStatus.textContent = "Uploading image and querying Gemini...";
 
       try {
         const reader = new FileReader();
@@ -546,14 +548,15 @@
           const base64Data = reader.result.split(',')[1];
           const mimeType = file.type || 'image/jpeg';
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{
                 parts: [
                   {
-                    text: "You are an expert clinical sports dietitian. Analyze the food in this image. Estimate realistic total calories (kcal) and protein (grams) for the depicted portion. Return ONLY valid, raw JSON (no markdown fences, no extra text) with this exact structure: {\"food\": \"concise description of food items\", \"calories\": 450, \"protein\": 30, \"mealType\": \"Breakfast\" or \"Lunch\" or \"Dinner\" or \"Snack\", \"brand\": \"brand name or empty string\", \"restaurant\": \"restaurant name or empty string\"}"
+                    text: "You are an expert clinical sports dietitian. Analyze the food in this image. Estimate realistic total calories (kcal) and protein (grams) for the depicted portion. Return ONLY valid, raw JSON with this exact structure: {\"food\": \"concise description of food items\", \"calories\": 450, \"protein\": 30, \"mealType\": \"Breakfast\" or \"Lunch\" or \"Dinner\" or \"Snack\", \"brand\": \"brand name or empty string\", \"restaurant\": \"restaurant name or empty string\"}"
                   },
                   {
                     inlineData: {
@@ -566,7 +569,13 @@
             })
           });
 
-          if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+          if (!response.ok) {
+            const errBody = await response.text();
+            console.error("Gemini Photo API Error:", response.status, errBody);
+            scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
+            scanStatus.textContent = `Google API Error (${response.status}):\n${errBody}`;
+            return;
+          }
 
           const resData = await response.json();
           let textResult = resData.candidates[0].content.parts[0].text.trim();
@@ -575,19 +584,17 @@
 
           applyParsedMealData(parsed);
 
-          scanStatus.classList.remove('text-slate-400');
-          scanStatus.classList.add('text-emerald-400');
-          scanStatus.textContent = "✓ Scan complete! Review and adjust values below if needed.";
+          scanStatus.className = "text-[11px] p-2 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 block font-mono";
+          scanStatus.textContent = "✓ Photo analyzed successfully! Verify values below.";
         };
       } catch (err) {
         console.error(err);
-        scanStatus.classList.remove('text-slate-400');
-        scanStatus.classList.add('text-rose-400');
-        scanStatus.textContent = "Photo analysis failed. Check your Gemini API key in settings.";
+        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
+        scanStatus.textContent = `Client Exception:\n${err.message || err}`;
       }
     });
 
-    // 2. GEMINI FREE TEXT ENQUIRY LOGIC
+    // 2. GEMINI FREE TEXT QUERY LOGIC (WITH DETAILED DIAGNOSTICS)
     const aiTextQueryBtn = document.getElementById('aiTextQueryBtn');
     const aiTextQueryInput = document.getElementById('aiTextQueryInput');
 
@@ -595,35 +602,40 @@
       const userText = aiTextQueryInput.value.trim();
       if (!userText) return;
 
-      const apiKey = settings.geminiApiKey;
+      const apiKey = (settings.geminiApiKey || '').trim();
       if (!apiKey) {
-        alert("Please tap the ⚙️ Settings icon and enter your Gemini API Key first!");
+        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 block font-mono";
+        scanStatus.textContent = "Error: Gemini API Key is missing. Open Settings (⚙️) and paste your key.";
         return;
       }
 
-      scanStatus.classList.remove('hidden', 'text-rose-400', 'text-emerald-400');
-      scanStatus.classList.add('text-slate-400');
-      scanStatus.textContent = "Calculating nutrition with Gemini...";
+      scanStatus.className = "text-[11px] p-2 rounded-lg bg-slate-950/80 border border-slate-700 text-slate-300 block font-mono";
+      scanStatus.textContent = "Sending request to Gemini...";
 
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{
-              parts: [
-                {
-                  text: `You are an expert clinical sports dietitian. Analyze the following user meal statement: "${userText}". 
-Estimate realistic total calories (kcal) and protein (grams). Identify brand/restaurant if mentioned (e.g., McDonald's, KFC, Subway, Starbucks).
-Return ONLY valid, raw JSON (no markdown fences, no explanatory text) with this exact structure:
-{"food": "clean item description", "calories": 480, "protein": 23, "mealType": "Breakfast" or "Lunch" or "Dinner" or "Snack", "brand": "Brand or empty", "restaurant": "Restaurant or empty"}`
-                }
-              ]
+              parts: [{
+                text: `You are an expert clinical sports dietitian. Analyze the following meal statement: "${userText}". 
+Estimate realistic total calories (kcal) and protein (grams). Identify brand/restaurant if mentioned (e.g., McDonald's, Subway, KFC, Starbucks).
+Return ONLY valid, raw JSON (no markdown fences, no text outside JSON) with this exact structure:
+{"food": "clean item description", "calories": 480, "protein": 23, "mealType": "Breakfast" or "Lunch" or "Dinner" or "Snack", "brand": "Brand or empty string", "restaurant": "Restaurant or empty string"}`
+              }]
             }]
           })
         });
 
-        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+        if (!response.ok) {
+          const errBody = await response.text();
+          console.error("Gemini Text API Error:", response.status, errBody);
+          scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
+          scanStatus.textContent = `Google API Error (${response.status}):\n${errBody}`;
+          return;
+        }
 
         const resData = await response.json();
         let textResult = resData.candidates[0].content.parts[0].text.trim();
@@ -632,14 +644,12 @@ Return ONLY valid, raw JSON (no markdown fences, no explanatory text) with this 
 
         applyParsedMealData(parsed);
 
-        scanStatus.classList.remove('text-slate-400');
-        scanStatus.classList.add('text-emerald-400');
-        scanStatus.textContent = "✓ Auto-filled! Review and adjust values below if needed.";
+        scanStatus.className = "text-[11px] p-2 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 block font-mono";
+        scanStatus.textContent = "✓ Meal parsed successfully! Review and adjust values below.";
       } catch (err) {
         console.error(err);
-        scanStatus.classList.remove('text-slate-400');
-        scanStatus.classList.add('text-rose-400');
-        scanStatus.textContent = "Calculation failed. Check your Gemini API key in settings.";
+        scanStatus.className = "text-[11px] p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 block font-mono whitespace-pre-wrap";
+        scanStatus.textContent = `Client Exception:\n${err.message || err}`;
       }
     }
 
